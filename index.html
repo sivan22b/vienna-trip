@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>וינה בחג המולד</title>
+<meta name="theme-color" content="#1f4d36">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="וינה">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="title">
+    <span class="tree" aria-hidden="true">🎄</span>
+    <div>
+      <h1>וינה בחג המולד</h1>
+      <p id="countdown" class="sub"></p>
+    </div>
+  </div>
+  <button id="btnSettings" class="icon-btn" aria-label="הגדרות, ייצוא וייבוא">⚙️</button>
+</header>
+
+<nav class="tabs" id="tabs" role="tablist"></nav>
+
+<main>
+  <section id="view-list" class="view">
+    <div class="filters">
+      <input id="q" type="search" placeholder="חיפוש לפי שם, כתובת או הערה" autocomplete="off">
+      <div class="seg" id="originSeg">
+        <button data-v="all" class="on">הכל</button>
+        <button data-v="mine">שלי</button>
+        <button data-v="suggested">מומלצים ✨</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="hideVisited"> הסתר מקומות שביקרנו</label>
+    </div>
+    <p class="count" id="count"></p>
+    <ul class="cards" id="cards"></ul>
+  </section>
+
+  <section id="view-map" class="view" hidden>
+    <div id="map"></div>
+    <div class="legend" id="legend"></div>
+    <p class="note small" id="mapNote"></p>
+  </section>
+
+  <section id="view-weather" class="view" hidden>
+    <div id="weather"></div>
+  </section>
+</main>
+
+<button id="btnAdd" class="fab" aria-label="הוספת מקום">＋</button>
+
+<dialog id="dlgEdit">
+  <form id="formEdit" method="dialog">
+    <h2 id="editTitle">מקום חדש</h2>
+    <label>שם<input name="name" required></label>
+    <label>קטגוריה<select name="category" id="selCat"></select></label>
+    <label>כתובת<input name="address"></label>
+    <div class="row2">
+      <label>קו רוחב (lat)<input name="lat" inputmode="decimal"></label>
+      <label>קו אורך (lng)<input name="lng" inputmode="decimal"></label>
+    </div>
+    <button type="button" id="btnGeo" class="btn ghost small">📍 מצא קואורדינטות לפי הכתובת</button>
+    <span id="geoMsg" class="small"></span>
+    <label>שעות פתיחה<input name="hours"></label>
+    <label>הערה לחג<input name="christmas_note" placeholder="למשל: סגור ב-24-26.12"></label>
+    <label>הערות<textarea name="note" rows="3"></textarea></label>
+    <label>קישור ל-Google Maps<input name="gmaps_url" type="url" placeholder="אפשר להשאיר ריק"></label>
+    <label class="chk"><input type="checkbox" name="suggested"> הצעה (לא מהרשימה שלי)</label>
+    <label class="chk"><input type="checkbox" name="visited"> ביקרנו</label>
+    <div class="actions">
+      <button type="submit" class="btn" value="save">שמירה</button>
+      <button type="button" class="btn ghost" id="btnCancel">ביטול</button>
+      <button type="button" class="btn danger" id="btnDelete">מחיקה</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSettings">
+  <div class="sheet">
+    <h2>הגדרות ושיתוף</h2>
+    <h3>שיתוף בין הטלפונים</h3>
+    <p class="small">מייצאים קובץ בטלפון אחד, שולחים אותו בוואטסאפ, ומייבאים בטלפון השני.</p>
+    <div class="actions">
+      <button class="btn" id="btnExport">⬇️ ייצוא קובץ</button>
+      <button class="btn ghost" id="btnImport">⬆️ ייבוא קובץ</button>
+      <input type="file" id="fileImport" accept=".json,application/json" hidden>
+    </div>
+    <div id="importChoice" class="choice" hidden>
+      <p>איך לייבא?</p>
+      <button class="btn small" id="btnMerge">מיזוג (מוסיף ומעדכן, שומר "ביקרנו" משני הצדדים)</button>
+      <button class="btn ghost small" id="btnReplace">החלפה מלאה</button>
+    </div>
+    <p id="importMsg" class="small"></p>
+
+    <h3>מיקום לימים בהרים (24-26.12)</h3>
+    <p class="small">ברירת המחדל היא וינה. אפשר לחפש עיירה כדי שמזג האוויר יתאים לימים האלה.</p>
+    <div class="row2">
+      <input id="mtnQ" placeholder="למשל Semmering או Zell am See">
+      <button class="btn small" id="btnMtn">חיפוש</button>
+    </div>
+    <ul id="mtnResults" class="results"></ul>
+    <p class="small">כרגע: <b id="mtnCurrent"></b> <button class="link" id="btnMtnReset">חזרה לווינה</button></p>
+
+    <h3>איפוס</h3>
+    <button class="btn danger small" id="btnReset">חזרה לרשימה המקורית (מוחק שינויים)</button>
+
+    <div class="actions"><button class="btn ghost" id="btnCloseSettings">סגירה</button></div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
