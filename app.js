@@ -138,7 +138,6 @@ function tabsDef() {
     ...CAT_ORDER.map((c) => ({ id: c, label: CAT_SHORT[c] || state.categories[c] || CAT_DEFAULT[c], icon: CAT_ICON[c] })),
     { id: 'map', label: 'מפה', icon: '🗺️' },
     { id: 'weather', label: 'מזג אוויר', icon: '❄️' },
-    { id: 'expenses', label: 'הוצאות', icon: '' },
   ];
 }
 function buildTabs() {
@@ -157,8 +156,9 @@ function markTab() {
   });
 }
 function showTab(id) {
-  if (!tabsDef().some((t) => t.id === id)) id = 'all';
+  if (id !== 'expenses' && !tabsDef().some((t) => t.id === id)) id = 'all';
   ui.tab = id; saveUi(); markTab();
+  $('#btnExpenses').classList.toggle('on', id === 'expenses'); $('#btnExpenses').setAttribute('aria-pressed', id === 'expenses');
   $('#view-list').hidden = ['map', 'weather', 'expenses'].includes(id);
   $('#view-map').hidden = id !== 'map';
   $('#view-weather').hidden = id !== 'weather';
@@ -560,6 +560,7 @@ function bindUi() {
   $('#btnCancel').onclick = () => $('#dlgEdit').close();
   $('#btnDelete').onclick = deleteEdit;
   $('#btnGeo').onclick = geocodeAddress;
+  $('#btnExpenses').onclick = () => showTab(ui.tab === 'expenses' ? 'all' : 'expenses');
   $('#btnSettings').onclick = () => { renderMtn(); $('#importChoice').hidden = true; $('#importMsg').textContent = ''; $('#dlgSettings').showModal(); };
   $('#btnCloseSettings').onclick = () => $('#dlgSettings').close();
   $('#btnExport').onclick = exportData;
@@ -585,7 +586,7 @@ const expCat = (k) => EXP_CATS.find((c) => c[0] === k) || EXP_CATS[5];
 let expenses = lsGet(LS_EXP, []);
 let rate = lsGet(LS_RATE, { value: 3.8, date: null, manual: false, fallback: true });
 let expEditing = null, expDate = null, expCatSel = 'food';
-const payers = () => (meta.payers && meta.payers.length === 2 ? meta.payers : ['סיון', 'בן/בת הזוג']);
+const payers = () => (meta.payers && meta.payers.length === 2 ? meta.payers.map((n, i) => (i === 1 && n === 'בן/בת הזוג' ? 'גוס' : n)) : ['סיון', 'גוס']);
 let expPayer = lsGet('vienna.payer.v1', 0);
 const saveExp = () => lsSet(LS_EXP, expenses);
 const fmtEur = (v) => `<span dir="ltr" class="num">€${v.toLocaleString('he-IL', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })}</span>`;
