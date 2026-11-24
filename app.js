@@ -67,8 +67,23 @@ function normalize(p) {
     id: p.id ?? null, name: String(p.name || '').trim(), category: CAT_ORDER.includes(p.category) ? p.category : 'misc',
     address: p.address || '', lat: num(p.lat), lng: num(p.lng), hours: p.hours || '',
     christmas_note: p.christmas_note || '', note: p.note || '', source: p.source || 'app',
-    gmaps_url: p.gmaps_url || '', visited: !!p.visited, suggested: !!p.suggested,
+    gmaps_url: p.gmaps_url || '', visited: !!p.visited, suggested: !!p.suggested, favorite: !!p.favorite,
   };
+}
+function maxId(list) { return list.reduce((m, p) => Math.max(m, Number(p.id) || 0), 0); }
+// מקומות חדשים שנוספו ל-data.json אחרי ההתקנה מתווספים אוטומטית, בלי לגעת בשינויים שלכם
+async function syncSeed() {
+  let seed; try { seed = await loadSeed(); } catch { return; }
+  if (seed.trip) state.trip = { ...state.trip, ...seed.trip };
+  const seen = meta.seedMax ?? 122;
+  const names = new Set(state.places.map((p) => p.name.trim().toLowerCase()));
+  const fresh = (seed.places || []).filter((p) => Number(p.id) > seen && !names.has(String(p.name).trim().toLowerCase())).map(normalize);
+  meta.seedMax = Math.max(seen, maxId(seed.places || [])); lsSet(LS_META, meta);
+  if (!fresh.length) { savePlaces(); return; }
+  const ids = new Set(state.places.map((p) => p.id));
+  fresh.forEach((p) => { if (ids.has(p.id)) p.id = nextId(); state.places.push(p); ids.add(p.id); });
+  savePlaces(); markersDirty = true; buildTabs(); refreshView();
+  toast(`נוספו ${fresh.length} מקומות חדשים לרשימה 🎁`);
 }
 function nextId() { return state.places.reduce((m, p) => Math.max(m, Number(p.id) || 0), 0) + 1; }
 
@@ -78,13 +93,14 @@ async function init() {
   const saved = lsGet(LS_PLACES, null);
   if (saved && Array.isArray(saved.places)) applyData(saved);
   else {
-    try { applyData(await loadSeed()); savePlaces(); }
+    try { const seed = await loadSeed(); applyData(seed); meta.seedMax = maxId(seed.places); lsSet(LS_META, meta); savePlaces(); }
     catch { toast('לא הצלחתי לטעון את הרשימה. נסו שוב כשיש אינטרנט'); }
   }
   buildTabs(); buildCatSelect(); bindUi(); countdown();
   $('#q').value = ui.q; $('#hideVisited').checked = ui.hideVisited;
   setOrigin(ui.origin, false);
   showTab(ui.tab);
+  if (saved) syncSeed();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
@@ -104,7 +120,8 @@ function countdown() {
 /* ---------- tabs ---------- */
 function tabsDef() {
   return [
-    { id: 'all', label: 'הכל', icon: '⭐' },
+    { id: 'all', label: 'הכל', icon: '📋' },
+    { id: 'fav', label: 'מועדפים', icon: '❤️' },
     ...CAT_ORDER.map((c) => ({ id: c, label: CAT_SHORT[c] || state.categories[c] || CAT_DEFAULT[c], icon: CAT_ICON[c] })),
     { id: 'map', label: 'מפה', icon: '🗺️' },
     { id: 'weather', label: 'מזג אוויר', icon: '❄️' },
@@ -112,7 +129,7 @@ function tabsDef() {
 }
 function buildTabs() {
   $('#tabs').innerHTML = tabsDef().map((t) => {
-    const n = CAT_ORDER.includes(t.id) ? state.places.filter((p) => p.category === t.id).length : t.id === 'all' ? state.places.length : '';
+    const n = CAT_ORDER.includes(t.id) ? state.places.filter((p) => p.category === t.id).length : t.id === 'all' ? state.places.length : t.id === 'fav' ? state.places.filter((p) => p.favorite).length : '';
     return `<button class="tab" role="tab" data-tab="${t.id}">${t.icon} ${esc(t.label)}${n !== '' ? `<span class="n">${n}</span>` : ''}</button>`;
   }).join('');
   $('#tabs').querySelectorAll('.tab').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
@@ -141,7 +158,8 @@ function showTab(id) {
 function filtered() {
   const q = ui.q.trim().toLowerCase();
   return state.places.filter((p) => {
-    if (ui.tab !== 'all' && p.category !== ui.tab) return false;
+    if (ui.tab === 'fav') { if (!p.favorite) return false; }
+    else if (ui.tab !== 'all' && p.category !== ui.tab) return false;
     if (ui.origin === 'mine' && p.suggested) return false;
     if (ui.origin === 'suggested' && !p.suggested) return false;
     if (ui.hideVisited && p.visited) return false;
@@ -158,17 +176,17 @@ function renderList() {
 }
 function cardHtml(p) {
   const catLabel = state.categories[p.category] || CAT_DEFAULT[p.category];
-  return `<li class="card ${p.suggested ? 'suggested' : ''} ${p.visited ? 'visited' : ''}" style="--cat:${CAT_COLOR[p.category]}" data-id="${p.id}">
+  return `<li class="card ${p.suggested ? 'suggested' : ''} ${p.favorite ? 'favorite' : ''} ${p.visited ? 'visited' : ''}" style="--cat:${CAT_COLOR[p.category]}" data-id="${p.id}">
     <div class="card-head">
       <div>
         <h3>${esc(p.name)}</h3>
         <div class="badges">
-          ${ui.tab === 'all' ? `<span class="badge">${CAT_ICON[p.category]} ${esc(catLabel)}</span>` : ''}
+          ${ui.tab === 'all' || ui.tab === 'fav' ? `<span class="badge">${CAT_ICON[p.category]} ${esc(catLabel)}</span>` : ''}
           ${p.suggested ? '<span class="badge sug">✨ הצעה</span>' : ''}
           ${!hasGeo(p) ? '<span class="badge nogeo">אין מיקום במפה</span>' : ''}
         </div>
       </div>
-      <button class="edit" data-act="edit" aria-label="עריכה">✏️</button>
+      <div class="head-btns"><button class="fav ${p.favorite ? 'on' : ''}" data-act="fav" aria-label="${p.favorite ? 'הסרה ממועדפים' : 'הוספה למועדפים'}">${p.favorite ? '❤️' : '🤍'}</button><button class="edit" data-act="edit" aria-label="עריכה">✏️</button></div>
     </div>
     ${p.address ? `<p class="meta">📍 ${esc(p.address)}</p>` : ''}
     ${p.hours ? `<p class="meta">🕒 ${esc(p.hours)}</p>` : ''}
@@ -185,6 +203,7 @@ function onCardClick(e) {
   const btn = e.target.closest('[data-act]'); if (!btn) return;
   const id = btn.closest('.card').dataset.id;
   const p = state.places.find((x) => String(x.id) === id); if (!p) return;
+  if (btn.dataset.act === 'fav') { p.favorite = !p.favorite; savePlaces(); buildTabs(); renderList(); markersDirty = true; toast(p.favorite ? 'נוסף למועדפים ❤️' : 'הוסר מהמועדפים'); }
   if (btn.dataset.act === 'visit') { p.visited = !p.visited; savePlaces(); renderList(); markersDirty = true; }
   if (btn.dataset.act === 'edit') openEdit(p);
   if (btn.dataset.act === 'onmap') { focusOnMap = p.id; showTab('map'); }
@@ -206,7 +225,7 @@ function openEdit(p) {
   $('#btnDelete').hidden = !p;
   const v = p || { category: CAT_ORDER.includes(ui.tab) ? ui.tab : 'restaurants', suggested: false, visited: false };
   for (const k of ['name', 'category', 'address', 'lat', 'lng', 'hours', 'christmas_note', 'note', 'gmaps_url']) f.elements[k].value = v[k] ?? '';
-  f.elements.suggested.checked = !!v.suggested; f.elements.visited.checked = !!v.visited;
+  f.elements.suggested.checked = !!v.suggested; f.elements.favorite.checked = !!v.favorite; f.elements.visited.checked = !!v.visited;
   $('#dlgEdit').showModal();
 }
 function saveEdit(e) {
@@ -216,7 +235,7 @@ function saveEdit(e) {
     name: el.name.value, category: el.category.value, address: el.address.value.trim(),
     lat: el.lat.value.trim().replace(',', '.'), lng: el.lng.value.trim().replace(',', '.'),
     hours: el.hours.value.trim(), christmas_note: el.christmas_note.value.trim(), note: el.note.value.trim(),
-    gmaps_url: el.gmaps_url.value.trim(), suggested: el.suggested.checked, visited: el.visited.checked,
+    gmaps_url: el.gmaps_url.value.trim(), suggested: el.suggested.checked, visited: el.visited.checked, favorite: el.favorite.checked,
   });
   if (!data.name) { el.name.focus(); return; }
   if (editingId !== null) {
@@ -286,7 +305,7 @@ function drawMarkers() {
   withGeo.filter((p) => !mapHidden.has(p.category)).forEach((p) => {
     const icon = L.divIcon({ className: '', html: `<div class="pin ${p.suggested ? 'sug' : ''} ${p.visited ? 'vis' : ''}" style="background:${CAT_COLOR[p.category]}"></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -22] });
     L.marker([p.lat, p.lng], { icon, pid: p.id }).addTo(markerLayer).bindPopup(
-      `<b>${CAT_ICON[p.category]} ${esc(p.name)}</b>${p.suggested ? ' ✨' : ''}${p.visited ? ' ✓' : ''}<br>${esc(p.address)}${p.hours ? `<br>🕒 ${esc(p.hours)}` : ''}${p.christmas_note ? `<br>🎄 ${esc(p.christmas_note)}` : ''}<br><a href="${esc(mapsUrl(p))}" target="_blank" rel="noopener">ניווט ←</a>`
+      `<b>${CAT_ICON[p.category]} ${esc(p.name)}</b>${p.favorite ? ' ❤️' : ''}${p.suggested ? ' ✨' : ''}${p.visited ? ' ✓' : ''}<br>${esc(p.address)}${p.hours ? `<br>🕒 ${esc(p.hours)}` : ''}${p.christmas_note ? `<br>🎄 ${esc(p.christmas_note)}` : ''}<br><a href="${esc(mapsUrl(p))}" target="_blank" rel="noopener">ניווט ←</a>`
     );
   });
   const missing = state.places.length - withGeo.length;
@@ -471,7 +490,7 @@ function doImport(mode) {
     const key = (p) => p.name.trim().toLowerCase();
     for (const inc of pendingImport.places) {
       const ex = state.places.find((p) => (inc.id != null && p.id === inc.id && key(p) === key(inc))) || state.places.find((p) => key(p) === key(inc));
-      if (ex) { const next = { ...inc, id: ex.id, visited: ex.visited || inc.visited }; if (JSON.stringify({ ...ex, source: 0 }) !== JSON.stringify({ ...ex, ...next, source: 0 })) updated++; Object.assign(ex, next); }
+      if (ex) { const next = { ...inc, id: ex.id, visited: ex.visited || inc.visited, favorite: ex.favorite || inc.favorite }; if (JSON.stringify({ ...ex, source: 0 }) !== JSON.stringify({ ...ex, ...next, source: 0 })) updated++; Object.assign(ex, next); }
       else { state.places.push({ ...inc, id: nextId() }); added++; }
     }
   }
@@ -482,7 +501,7 @@ function doImport(mode) {
 async function resetAll() {
   const b = $('#btnReset');
   if (!b.dataset.confirm) { b.dataset.confirm = '1'; b.textContent = 'בטוח? כל השינויים יימחקו. לחצו שוב'; setTimeout(() => { delete b.dataset.confirm; b.textContent = 'חזרה לרשימה המקורית (מוחק שינויים)'; }, 4000); return; }
-  try { applyData(await loadSeed()); savePlaces(); markersDirty = true; buildTabs(); refreshView(); toast('חזרנו לרשימה המקורית'); $('#dlgSettings').close(); }
+  try { const seed = await loadSeed(); applyData(seed); meta.seedMax = maxId(seed.places); lsSet(LS_META, meta); savePlaces(); markersDirty = true; buildTabs(); refreshView(); toast('חזרנו לרשימה המקורית'); $('#dlgSettings').close(); }
   catch { toast('צריך אינטרנט בשביל זה'); }
   delete b.dataset.confirm; b.textContent = 'חזרה לרשימה המקורית (מוחק שינויים)';
 }

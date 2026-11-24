@@ -1,7 +1,7 @@
 {
   "trip": {
-    "weather_start": "2026-12-20",
     "city": "Vienna",
+    "weather_start": "2026-12-20",
     "start": "2026-12-21",
     "end": "2026-12-30",
     "away": [
@@ -1739,7 +1739,7 @@
       "lng": 16.371,
       "hours": "ב'-ש'",
       "christmas_note": "",
-      "note": "כלבו יוקרתי, ובגג Sky Bar עם נוף",
+      "note": "הכלבו הכי קרוב לסלפרידג׳ס/בון מרשה בווינה: 7 קומות של מותגי מעצבים, קוסמטיקה ואופנה, ובגג Sky Bar עם נוף. (בווינה אין כלבו בסדר הגודל של לאפייט)",
       "source": "suggestion",
       "gmaps_url": "https://www.google.com/maps/search/?api=1&query=Steffl%20Kaufhaus%20Wien",
       "visited": false,
@@ -1847,6 +1847,51 @@
       "note": "שוק הפשפשים הגדול והמקומי של וינה",
       "source": "suggestion",
       "gmaps_url": "https://www.google.com/maps/search/?api=1&query=Flohmarkt%20Wien",
+      "visited": false,
+      "suggested": true
+    },
+    {
+      "id": 123,
+      "name": "Scotch & Soda",
+      "category": "shops",
+      "address": "Wien",
+      "lat": null,
+      "lng": null,
+      "hours": "ב'-ש'",
+      "christmas_note": "",
+      "note": "לבדוק לפני שהולכים שהסניף עדיין פתוח",
+      "source": "sivan_chat",
+      "gmaps_url": "https://www.google.com/maps/search/?api=1&query=Scotch%20%26%20Soda%20Wien",
+      "visited": false,
+      "suggested": false
+    },
+    {
+      "id": 124,
+      "name": "L'Occitane en Provence",
+      "category": "shops",
+      "address": "Wien (כמה סניפים במרכז)",
+      "lat": null,
+      "lng": null,
+      "hours": "ב'-ש'",
+      "christmas_note": "",
+      "note": "הקישור מחפש את הסניפים בווינה",
+      "source": "sivan_chat",
+      "gmaps_url": "https://www.google.com/maps/search/?api=1&query=L%27Occitane%20en%20Provence%20Wien",
+      "visited": false,
+      "suggested": false
+    },
+    {
+      "id": 125,
+      "name": "Goldenes Quartier",
+      "category": "shops",
+      "address": "Tuchlauben / Am Hof, 1010 Wien",
+      "lat": 48.2108,
+      "lng": 16.3681,
+      "hours": "ב'-ש'",
+      "christmas_note": "",
+      "note": "רובע בוטיקים של בתי אופנה (Louis Vuitton, Prada, Miu Miu, Saint Laurent ועוד). לא כלבו, אבל החוויה הכי קרובה לגאלרי לאפייט/בון מרשה",
+      "source": "suggestion",
+      "gmaps_url": "https://www.google.com/maps/search/?api=1&query=Goldenes%20Quartier%20Wien",
       "visited": false,
       "suggested": true
     }
