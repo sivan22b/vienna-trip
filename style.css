@@ -233,3 +233,9 @@ html,body{overflow-x:hidden}
 /* הצעות (לא מהרשימה שלכם) מודגשות */
 .place.suggested .kind,.place.suggested .facts dd,.place.suggested .note,.place.suggested .xmas{font-weight:600}
 .place.suggested .kind{color:var(--fir)}
+
+/* טוש הדגשה ירוק על הצעות */
+.place.suggested .hl{
+  background:linear-gradient(100deg, rgba(178,232,110,0) 0, rgba(178,232,110,.85) .3em, rgba(160,222,92,.75) 92%, rgba(178,232,110,0) 100%) 0 62%/100% 58% no-repeat;
+  -webkit-box-decoration-break:clone; box-decoration-break:clone; padding:0 .18em; border-radius:2px;
+}

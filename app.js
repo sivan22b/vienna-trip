@@ -194,11 +194,11 @@ function cardHtml(p) {
   return `<li class="place ${p.suggested ? 'suggested' : ''} ${p.visited ? 'visited' : ''}" data-id="${p.id}">
     <div class="place-head">
       ${sq(p.category, p.suggested)}
-      <h3>${esc(p.name)}</h3>
+      <h3><span class="hl">${esc(p.name)}</span></h3>
       <button class="fav ${p.favorite ? 'on' : ''}" data-act="fav" aria-pressed="${p.favorite}" aria-label="${p.favorite ? 'הסרה ממועדפים' : 'הוספה למועדפים'}">♥</button>
       <button class="edit" data-act="edit" aria-label="עריכה"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M3 14.5V17h2.5L15 7.5 12.5 5 3 14.5zM14 3.5l2.5 2.5 1-1a1 1 0 000-1.4l-1.1-1.1a1 1 0 00-1.4 0l-1 1z" fill="currentColor"/></svg></button>
     </div>
-    ${showCat || p.suggested || !hasGeo(p) ? `<p class="kind">${[showCat ? esc(catLabel) : '', p.suggested ? 'הצעה שלנו, לא מהרשימה שלכם' : '', !hasGeo(p) ? 'עוד אין מיקום במפה' : ''].filter(Boolean).join('. ')}</p>` : ''}
+    ${showCat || p.suggested || !hasGeo(p) ? `<p class="kind">${[showCat ? esc(catLabel) : '', p.suggested ? '<span class="hl">הצעה שלנו, לא מהרשימה שלכם</span>' : '', !hasGeo(p) ? 'עוד אין מיקום במפה' : ''].filter(Boolean).join('. ')}</p>` : ''}
     <dl class="facts">
       ${p.address ? `<div><dt>כתובת</dt><dd dir="auto">${esc(p.address)}</dd></div>` : ''}
       ${p.hours ? `<div><dt>שעות</dt><dd dir="auto">${esc(p.hours)}</dd></div>` : ''}
