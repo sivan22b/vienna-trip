@@ -1,5 +1,5 @@
 // Service worker: האפליקציה עובדת גם בלי אינטרנט
-const VERSION = 'v7';
+const VERSION = 'v8';
 const SHELL = `shell-${VERSION}`;
 const TILES = 'tiles-v1';
 const ASSETS = [

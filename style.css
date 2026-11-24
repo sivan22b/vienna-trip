@@ -12,7 +12,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{
-  font-family:var(--body); background:url(img/edge-left.svg) left -14px top 140px/56px 640px repeat-y, url(img/edge-right.svg) right -14px top 300px/56px 640px repeat-y, var(--cream); color:var(--ink); font-size:16px; line-height:1.5;
+  font-family:var(--body); background:url(img/edge-left.svg) left 4px top 0/56px 1280px repeat-y, url(img/edge-right.svg) right 4px top 0/56px 1280px repeat-y, var(--cream); color:var(--ink); font-size:16px; line-height:1.5;
   padding-bottom:calc(96px + env(safe-area-inset-bottom));
   -webkit-tap-highlight-color:transparent;
 }
@@ -224,3 +224,8 @@ dialog label.chk{display:flex}
 
 .num{unicode-bidi:isolate; white-space:nowrap}
 html,body{overflow-x:hidden}
+
+/* בטלפון הקישוטים קטנים ונכנסים כולם בשוליים, בלי לגעת בטקסט */
+@media (max-width: 720px){
+  body{background-position:left 0 top 0, right 0 top 0; background-size:16px 366px, 16px 366px}
+}
