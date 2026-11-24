@@ -12,7 +12,7 @@
 *{box-sizing:border-box}
 html,body{margin:0}
 body{
-  font-family:var(--body); background:var(--cream); color:var(--ink); font-size:16px; line-height:1.5;
+  font-family:var(--body); background:var(--cream) url(img/ornaments.svg) 0 0/260px 260px; background-attachment:scroll; color:var(--ink); font-size:16px; line-height:1.5;
   padding-bottom:calc(96px + env(safe-area-inset-bottom));
   -webkit-tap-highlight-color:transparent;
 }
