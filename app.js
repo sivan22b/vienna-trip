@@ -138,6 +138,7 @@ function tabsDef() {
     ...CAT_ORDER.map((c) => ({ id: c, label: CAT_SHORT[c] || state.categories[c] || CAT_DEFAULT[c], icon: CAT_ICON[c] })),
     { id: 'map', label: 'מפה', icon: '🗺️' },
     { id: 'weather', label: 'מזג אוויר', icon: '❄️' },
+    { id: 'expenses', label: 'הוצאות', icon: '' },
   ];
 }
 function buildTabs() {
@@ -158,12 +159,14 @@ function markTab() {
 function showTab(id) {
   if (!tabsDef().some((t) => t.id === id)) id = 'all';
   ui.tab = id; saveUi(); markTab();
-  $('#view-list').hidden = id === 'map' || id === 'weather';
+  $('#view-list').hidden = ['map', 'weather', 'expenses'].includes(id);
   $('#view-map').hidden = id !== 'map';
   $('#view-weather').hidden = id !== 'weather';
-  $('#btnAdd').hidden = id === 'weather' || id === 'map';
+  $('#view-expenses').hidden = id !== 'expenses';
+  $('#btnAdd').hidden = ['map', 'weather', 'expenses'].includes(id);
   if (id === 'map') showMap();
   else if (id === 'weather') showWeather();
+  else if (id === 'expenses') showExpenses();
   else renderList();
   window.scrollTo({ top: 0 });
 }
@@ -282,7 +285,7 @@ async function geocodeAddress() {
   }
   $('#geoMsg').textContent = 'לא נמצא. אפשר להעתיק קואורדינטות מ-Google Maps (לחיצה ארוכה על המקום)';
 }
-function refreshView() { if (ui.tab === 'map') showMap(); else if (ui.tab !== 'weather') renderList(); }
+function refreshView() { if (ui.tab === 'map') showMap(); else if (ui.tab === 'expenses') showExpenses(); else if (ui.tab !== 'weather') renderList(); }
 
 /* ---------- map ---------- */
 let map, markerLayer, markersDirty = true, focusOnMap = null;
@@ -492,7 +495,7 @@ async function searchMtn() {
 
 /* ---------- export / import ---------- */
 async function exportData() {
-  const payload = { app: 'vienna-xmas', exported_at: new Date().toISOString(), trip: state.trip, categories: state.categories, places: state.places };
+  const payload = { app: 'vienna-xmas', exported_at: new Date().toISOString(), trip: state.trip, categories: state.categories, places: state.places, expenses };
   const name = `vienna-places-${todayStr()}.json`;
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const file = new File([blob], name, { type: 'application/json' });
@@ -507,10 +510,11 @@ function readImport(file) {
   const fr = new FileReader();
   fr.onload = () => {
     try {
-      const j = JSON.parse(fr.result); const places = Array.isArray(j) ? j : j.places;
-      if (!Array.isArray(places)) throw 0;
-      pendingImport = { ...j, places: places.map(normalize).filter((p) => p.name) };
-      $('#importChoice').hidden = false; $('#importMsg').textContent = `בקובץ ${pendingImport.places.length} מקומות`;
+      const j = JSON.parse(fr.result); const places = Array.isArray(j) ? j : (j.places || []);
+      const exps = Array.isArray(j.expenses) ? j.expenses : [];
+      if (!Array.isArray(places) || (!places.length && !exps.length)) throw 0;
+      pendingImport = { ...j, places: places.map(normalize).filter((p) => p.name), expenses: exps };
+      $('#importChoice').hidden = false; $('#importMsg').textContent = `בקובץ ${pendingImport.places.length} מקומות ו-${exps.length} הוצאות`;
     } catch { $('#importMsg').textContent = 'הקובץ לא תקין'; }
   };
   fr.readAsText(file);
@@ -518,7 +522,9 @@ function readImport(file) {
 function doImport(mode) {
   if (!pendingImport) return;
   let added = 0, updated = 0;
-  if (mode === 'replace') {
+  const expMsg = mergeExpenses(pendingImport.expenses || [], mode);
+  if (mode === 'replace' && !pendingImport.places.length) { /* קובץ של הוצאות בלבד: לא נוגעים במקומות */ }
+  else if (mode === 'replace') {
     applyData({ trip: pendingImport.trip, categories: pendingImport.categories, places: pendingImport.places });
     state.places.forEach((p) => { if (p.id == null) p.id = nextId(); });
     added = state.places.length;
@@ -532,7 +538,7 @@ function doImport(mode) {
   }
   pendingImport = null; $('#importChoice').hidden = true;
   savePlaces(); markersDirty = true; buildTabs(); refreshView();
-  $('#importMsg').textContent = mode === 'replace' ? `✓ הוחלף: ${added} מקומות` : `✓ נוספו ${added}, עודכנו ${updated}`;
+  $('#importMsg').textContent = (mode === 'replace' ? `✓ הוחלף: ${added} מקומות` : `✓ מקומות: נוספו ${added}, עודכנו ${updated}`) + `. ${expMsg}`;
 }
 async function resetAll() {
   const b = $('#btnReset');
@@ -565,6 +571,133 @@ function bindUi() {
   $('#btnMtnReset').onclick = () => { meta.mountain = null; lsSet(LS_META, meta); renderMtn(); toast('מזג האוויר לפי וינה'); };
   $('#btnReset').onclick = resetAll;
   $('#dlgSettings').addEventListener('close', () => { if (ui.tab === 'weather') showWeather(); });
+}
+
+/* ---------- expenses ---------- */
+const LS_EXP = 'vienna.expenses.v1';
+const LS_RATE = 'vienna.rate.v1';
+const EXP_CATS = [
+  ['food', 'אוכל ושתייה', '#b03a3f'], ['shop', 'קניות', '#6a3d6e'], ['transport', 'תחבורה', '#2f4e6e'],
+  ['sights', 'אטרקציות', '#b07d1e'], ['stay', 'לינה', '#2f7a4a'], ['other', 'אחר', '#7a5232'],
+];
+const expCat = (k) => EXP_CATS.find((c) => c[0] === k) || EXP_CATS[5];
+let expenses = lsGet(LS_EXP, []);
+let rate = lsGet(LS_RATE, { value: 3.8, date: null, manual: false, fallback: true });
+let expEditing = null, expDate = null, expCatSel = 'food';
+const saveExp = () => lsSet(LS_EXP, expenses);
+const fmtEur = (v) => `<span dir="ltr" class="num">€${v.toLocaleString('he-IL', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })}</span>`;
+const fmtIls = (v) => `<span dir="ltr" class="num">₪${Math.round(v).toLocaleString('he-IL')}</span>`;
+const ilsOf = (e) => e.eur * (e.rate || rate.value);
+
+async function refreshRate(force) {
+  if (rate.manual && !force) return;
+  if (!force && rate.fetchedAt && Date.now() - rate.fetchedAt < 12 * 3600 * 1000) return;
+  const tries = [
+    ['https://api.frankfurter.app/latest?from=EUR&to=ILS', (j) => [j.rates.ILS, j.date]],
+    ['https://open.er-api.com/v6/latest/EUR', (j) => [j.rates.ILS, (j.time_last_update_utc || '').slice(5, 16)]],
+  ];
+  for (const [url, pick] of tries) {
+    try {
+      const j = await (await fetch(url)).json(); const [v, d] = pick(j);
+      if (v > 1 && v < 10) { rate = { value: +v.toFixed(4), date: d, manual: false, fetchedAt: Date.now() }; lsSet(LS_RATE, rate); if (ui.tab === 'expenses') renderExpenses(); return; }
+    } catch {}
+  }
+}
+function fmtDate(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d); return m ? `${+m[3]}.${+m[2]}` : d; }
+function rateLine() {
+  const v = rate.value.toLocaleString('he-IL', { maximumFractionDigits: 3 });
+  const src = rate.manual ? 'שער שהזנתם ידנית' : rate.fallback ? 'שער משוער, יתעדכן כשיהיה אינטרנט' : `שער בנק אירופה${rate.date ? ` מ-${fmtDate(rate.date)}` : ''}`;
+  return `יורו אחד שווה <span dir="ltr" class="num">${v}</span> ש״ח (${src}).`;
+}
+function showExpenses() { if (!expDate) expDate = todayStr(); renderExpenses(); refreshRate(false); }
+function renderExpenses() {
+  const total = expenses.reduce((a, e) => a + e.eur, 0), totalIls = expenses.reduce((a, e) => a + ilsOf(e), 0);
+  const byDay = {}; expenses.forEach((e) => (byDay[e.date] = byDay[e.date] || []).push(e));
+  const days = Object.keys(byDay).sort().reverse();
+  const byCat = EXP_CATS.map(([k, label, color]) => ({ k, label, color, eur: expenses.filter((e) => e.cat === k).reduce((a, e) => a + e.eur, 0) })).filter((c) => c.eur > 0);
+  const max = Math.max(1, ...byCat.map((c) => c.eur));
+  const ed = expEditing ? expenses.find((e) => e.id === expEditing) : null;
+  $('#expenses').innerHTML = `
+    <header class="exp-top">
+      <h2>הוצאות</h2>
+      <div class="exp-total"><b>${fmtEur(total)}</b><span>${fmtIls(totalIls)}</span></div>
+      <p class="small">${expenses.length ? `סה״כ בטיול, ${expenses.length} הוצאות` : 'עוד לא נרשמו הוצאות'}</p>
+    </header>
+    <form class="exp-form" id="expForm" autocomplete="off">
+      <div class="exp-amount">
+        <label class="sr" for="expEur">סכום ביורו</label>
+        <span class="cur">€</span><input id="expEur" inputmode="decimal" placeholder="0" value="${ed ? ed.eur : ''}" required>
+        <output id="expIls" class="ils"></output>
+      </div>
+      <input id="expDesc" placeholder="על מה? למשל קפה וזאכרטורטה" value="${ed ? esc(ed.desc) : ''}">
+      <div class="exp-cats" role="radiogroup" aria-label="קטגוריה">
+        ${EXP_CATS.map(([k, label, color]) => `<button type="button" role="radio" aria-checked="${(ed ? ed.cat : expCatSel) === k}" class="ecat ${(ed ? ed.cat : expCatSel) === k ? 'on' : ''}" data-k="${k}" style="--c:${color}"><i class="sq" style="--c:${color}"></i>${label}</button>`).join('')}
+      </div>
+      <div class="exp-row">
+        <label>תאריך<input type="date" id="expDate" value="${ed ? ed.date : expDate}"></label>
+        <div class="actions">
+          <button class="btn" type="submit">${ed ? 'שמירת השינוי' : 'הוספת הוצאה'}</button>
+          ${ed ? '<button class="btn quiet" type="button" id="expCancel">ביטול</button><button class="btn danger" type="button" id="expDel">מחיקה</button>' : ''}
+        </div>
+      </div>
+      <p class="small exp-rate">${rateLine()} <button type="button" class="link" id="expRateBtn">שינוי השער</button></p>
+      <div id="expRateBox" class="exp-ratebox" hidden>
+        <input id="expRateIn" inputmode="decimal" value="${rate.value}" aria-label="כמה שקלים שווה יורו אחד">
+        <button type="button" class="btn small" id="expRateSave">שמירה</button>
+        <button type="button" class="btn quiet small" id="expRateLive">שער עדכני מהאינטרנט</button>
+      </div>
+    </form>
+    ${byCat.length ? `<section class="exp-cats-sum"><h3>לפי קטגוריה</h3>${byCat.map((c) => `
+      <div class="bar"><span class="bar-l"><i class="sq" style="--c:${c.color}"></i>${c.label}</span><span class="bar-v">${fmtEur(c.eur)}</span>
+      <span class="bar-t"><i style="width:${(c.eur / max) * 100}%;background:${c.color}"></i></span></div>`).join('')}</section>` : ''}
+    ${days.map((d) => {
+      const list = byDay[d]; const s = list.reduce((a, e) => a + e.eur, 0), si = list.reduce((a, e) => a + ilsOf(e), 0);
+      return `<section class="exp-day"><h3><span>${fmtDay(d)}</span><span class="exp-day-sum">${fmtEur(s)} <small>${fmtIls(si)}</small></span></h3>
+        <ul>${list.map((e) => `<li><button class="exp-item ${e.id === expEditing ? 'on' : ''}" data-id="${e.id}">
+          <i class="sq" style="--c:${expCat(e.cat)[2]}"></i><span class="exp-desc">${esc(e.desc || expCat(e.cat)[1])}</span>
+          <span class="exp-eur">${fmtEur(e.eur)}</span><span class="exp-ils">${fmtIls(ilsOf(e))}</span></button></li>`).join('')}</ul></section>`;
+    }).join('')}`;
+  bindExpenses();
+}
+function bindExpenses() {
+  const eurIn = $('#expEur');
+  const preview = () => { const v = parseFloat(eurIn.value.replace(',', '.')); $('#expIls').innerHTML = v > 0 ? `= ${fmtIls(v * (expEditing ? (expenses.find((e) => e.id === expEditing)?.rate || rate.value) : rate.value))}` : ''; };
+  eurIn.addEventListener('input', preview); preview();
+  $('#expenses').querySelectorAll('.ecat').forEach((b) => (b.onclick = () => {
+    expCatSel = b.dataset.k; $('#expenses').querySelectorAll('.ecat').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); });
+  }));
+  $('#expDate').onchange = (e) => { if (!expEditing) expDate = e.target.value; };
+  $('#expForm').onsubmit = (ev) => {
+    ev.preventDefault();
+    const eur = parseFloat(eurIn.value.replace(',', '.'));
+    if (!(eur > 0)) { eurIn.focus(); toast('צריך להזין סכום ביורו'); return; }
+    const cat = $('#expenses').querySelector('.ecat.on')?.dataset.k || 'other';
+    const data = { eur: Math.round(eur * 100) / 100, desc: $('#expDesc').value.trim(), cat, date: $('#expDate').value || todayStr() };
+    if (expEditing) { Object.assign(expenses.find((e) => e.id === expEditing), data); expEditing = null; toast('ההוצאה עודכנה'); }
+    else { expenses.push({ id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...data, rate: rate.value }); toast('ההוצאה נוספה'); }
+    saveExp(); renderExpenses();
+  };
+  $('#expenses').querySelectorAll('.exp-item').forEach((b) => (b.onclick = () => { expEditing = b.dataset.id; expCatSel = expenses.find((e) => e.id === expEditing).cat; renderExpenses(); window.scrollTo({ top: 0, behavior: 'smooth' }); }));
+  const cancel = $('#expCancel'); if (cancel) cancel.onclick = () => { expEditing = null; renderExpenses(); };
+  const del = $('#expDel');
+  if (del) del.onclick = () => {
+    if (!del.dataset.confirm) { del.dataset.confirm = '1'; del.textContent = 'בטוח? לחצו שוב'; return; }
+    expenses = expenses.filter((e) => e.id !== expEditing); expEditing = null; saveExp(); renderExpenses(); toast('ההוצאה נמחקה');
+  };
+  $('#expRateBtn').onclick = () => { $('#expRateBox').hidden = !$('#expRateBox').hidden; };
+  $('#expRateSave').onclick = () => {
+    const v = parseFloat($('#expRateIn').value.replace(',', '.'));
+    if (!(v > 1 && v < 10)) { toast('השער צריך להיות מספר, למשל 3.85'); return; }
+    rate = { value: v, date: todayStr(), manual: true }; lsSet(LS_RATE, rate); renderExpenses(); toast('השער נשמר. הוא חל על הוצאות חדשות');
+  };
+  $('#expRateLive').onclick = async () => { rate.manual = false; await refreshRate(true); renderExpenses(); };
+}
+function mergeExpenses(list, mode) {
+  const clean = list.filter((e) => e && e.id && e.eur > 0 && e.date).map((e) => ({ id: String(e.id), eur: +e.eur, desc: String(e.desc || ''), cat: expCat(e.cat)[0], date: String(e.date).slice(0, 10), rate: +e.rate || rate.value }));
+  if (mode === 'replace' && clean.length) { expenses = clean; saveExp(); return `הוצאות: ${clean.length}`; }
+  let added = 0;
+  for (const e of clean) { const ex = expenses.find((x) => x.id === e.id); if (ex) Object.assign(ex, e); else { expenses.push(e); added++; } }
+  saveExp(); return `הוצאות: נוספו ${added}`;
 }
 
 init();

@@ -1,5 +1,5 @@
 // Service worker: האפליקציה עובדת גם בלי אינטרנט
-const VERSION = 'v10';
+const VERSION = 'v11';
 const SHELL = `shell-${VERSION}`;
 const TILES = 'tiles-v1';
 const ASSETS = [
@@ -26,7 +26,7 @@ self.addEventListener('fetch', (e) => {
   const req = e.request; if (req.method !== 'GET') return;
   const url = new URL(req.url);
   // מזג אוויר וחיפוש מיקום: תמיד מהרשת (האפליקציה שומרת עותק אחרון בעצמה)
-  if (/open-meteo\.com|nominatim/.test(url.host)) return;
+  if (/open-meteo\.com|nominatim|frankfurter|er-api/.test(url.host)) return;
   // אריחי מפה: מהמטמון קודם, כדי שמה שכבר ראיתם יעבוד בלי רשת
   if (url.host.endsWith('tile.openstreetmap.org')) {
     e.respondWith(caches.open(TILES).then(async (c) => {

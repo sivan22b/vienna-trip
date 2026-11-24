@@ -62,9 +62,9 @@ h1 span{font-size:30px; font-weight:400; color:var(--gold); line-height:1}
 .tab.on sup{color:rgba(243,234,211,.7)}
 .tab.on .sq{box-shadow:0 0 0 1.5px var(--cream)}
 .tab.on .heart{color:var(--cream)}
-.tab-map,.tab-weather{color:var(--red)}
+.tab-map,.tab-weather,.tab-expenses{color:var(--red)}
 .tab-map{margin-inline-start:8px; border-inline-start:1px solid var(--rule); border-radius:0}
-.tab-map.on,.tab-weather.on{background:var(--red); color:var(--cream); border-radius:var(--r)}
+.tab-map.on,.tab-weather.on,.tab-expenses.on{background:var(--red); color:var(--cream); border-radius:var(--r)}
 
 .sq{display:inline-block; width:11px; height:11px; flex:0 0 11px; background:var(--c)}
 .sq.hollow{background:transparent; box-shadow:inset 0 0 0 2.5px var(--c)}
@@ -239,3 +239,45 @@ html,body{overflow-x:hidden}
   background:linear-gradient(100deg, rgba(178,232,110,0) 0, rgba(178,232,110,.85) .3em, rgba(160,222,92,.75) 92%, rgba(178,232,110,0) 100%) 0 62%/100% 58% no-repeat;
   -webkit-box-decoration-break:clone; box-decoration-break:clone; padding:0 .18em; border-radius:2px;
 }
+
+/* ---------- expenses ---------- */
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+.exp-top{display:grid; grid-template-columns:1fr auto; align-items:end; gap:0 12px; margin:4px 0 12px}
+.exp-top h2{font-family:var(--display); font-size:46px; line-height:.9; margin:0; color:var(--fir-deep)}
+.exp-top .small{grid-column:1/-1; margin:4px 0 0}
+.exp-total{display:grid; justify-items:end; line-height:1}
+.exp-total b{font-size:30px; font-weight:700; color:var(--red); letter-spacing:-.5px}
+.exp-total > span{font-size:16px; font-weight:600; color:var(--fir); margin-top:4px}
+.exp-form{display:grid; gap:10px; background:var(--paper); border:1px solid var(--rule); border-top:6px solid var(--fir); border-radius:var(--r); padding:14px}
+.exp-amount{display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:8px; border-bottom:2px solid var(--fir); padding-bottom:4px}
+.exp-amount .cur{font-family:var(--display); font-size:40px; color:var(--fir); line-height:1}
+.exp-amount input{border:0; background:transparent; font-family:var(--display); font-size:44px; line-height:1; padding:2px 0; direction:ltr; text-align:right}
+.exp-amount input:focus{outline:none}
+.exp-amount .ils{font-size:17px; font-weight:600; color:var(--red); white-space:nowrap}
+.exp-cats{display:flex; flex-wrap:wrap; gap:6px}
+.ecat{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--rule); background:var(--cream); border-radius:var(--r); padding:6px 10px; font-size:14px; cursor:pointer}
+.ecat.on{border-color:var(--c); box-shadow:inset 0 0 0 1px var(--c); background:var(--paper); font-weight:600}
+.exp-row{display:flex; align-items:end; gap:10px; flex-wrap:wrap; justify-content:space-between}
+.exp-row label{display:grid; gap:4px; font-size:13px; color:var(--muted)}
+.exp-row input{width:auto; padding:8px 10px}
+.exp-row .actions{margin:0}
+.exp-rate{margin:0}
+.exp-ratebox{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.exp-ratebox input{width:7em; direction:ltr}
+.exp-cats-sum{margin-top:18px}
+.exp-cats-sum h3,.exp-day h3{font-family:var(--display); font-size:28px; line-height:1; margin:0 0 8px; color:var(--fir-deep); font-weight:700}
+.bar{display:grid; grid-template-columns:1fr auto; gap:2px 10px; margin-bottom:8px; font-size:14px}
+.bar-l{display:inline-flex; align-items:center; gap:6px}
+.bar-v{font-weight:600}
+.bar-t{grid-column:1/-1; height:6px; background:var(--wash); border-radius:1px; overflow:hidden}
+.bar-t i{display:block; height:100%}
+.exp-day{margin-top:18px; background:var(--cream)}
+.exp-day h3{display:flex; justify-content:space-between; align-items:baseline; gap:10px; border-bottom:2px solid var(--fir); padding-bottom:4px}
+.exp-day-sum{font-family:var(--body); font-size:15px; font-weight:600; color:var(--red)}
+.exp-day-sum small{font-size:13px; color:var(--fir); font-weight:500; margin-inline-start:6px}
+.exp-day ul{list-style:none; margin:0; padding:0}
+.exp-item{width:100%; display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:10px; text-align:right; cursor:pointer;
+  border:0; border-bottom:1px solid var(--rule); background:transparent; padding:10px 2px; font-size:15px}
+.exp-item.on{background:var(--wash)}
+.exp-eur{font-weight:600}
+.exp-ils{color:var(--muted); font-size:13.5px; min-width:4.5em; text-align:left}
