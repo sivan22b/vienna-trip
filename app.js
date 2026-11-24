@@ -103,7 +103,13 @@ async function init() {
   setOrigin(ui.origin, false);
   showTab(ui.tab);
   if (saved) syncSeed();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    // כשגרסה חדשה של האפליקציה נכנסת לפעולה, טוענים מחדש פעם אחת כדי להציג אותה
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController && !reloaded) { reloaded = true; location.reload(); } });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((r) => r.update()).catch(() => {});
+  }
 }
 
 /* ---------- header ---------- */

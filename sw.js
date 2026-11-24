@@ -1,5 +1,5 @@
 // Service worker: האפליקציה עובדת גם בלי אינטרנט
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `shell-${VERSION}`;
 const TILES = 'tiles-v1';
 const ASSETS = [
@@ -11,7 +11,7 @@ const ASSETS = [
 const MAX_TILES = 600;
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => Promise.all(ASSETS.map((a) => c.add(a).catch(() => {})))).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(SHELL).then((c) => Promise.all(ASSETS.map((a) => c.add(new Request(a, { cache: 'reload' })).catch(() => {})))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== SHELL && k !== TILES).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -36,13 +36,18 @@ self.addEventListener('fetch', (e) => {
     }));
     return;
   }
-  // כל השאר: מהמטמון מיד, ומתעדכן ברקע
+  // קבצי האפליקציה: קודם מהרשת (תמיד הגרסה העדכנית), ואם אין רשת מהמטמון
   e.respondWith(caches.open(SHELL).then(async (c) => {
-    const hit = await c.match(req, { ignoreSearch: url.origin === location.origin });
-    const net = fetch(req).then((res) => { if (res.ok || res.type === 'opaque') c.put(req, res.clone()); return res; }).catch(() => null);
-    if (hit) { e.waitUntil(net); return hit; }
-    const res = await net; if (res) return res;
-    if (req.mode === 'navigate') return (await c.match('index.html')) || Response.error();
-    return Response.error();
+    const sameOrigin = url.origin === location.origin;
+    try {
+      const res = await fetch(sameOrigin ? new Request(req, { cache: 'no-cache' }) : req);
+      if (res.ok || res.type === 'opaque') c.put(req, res.clone());
+      return res;
+    } catch {
+      const hit = await c.match(req, { ignoreSearch: sameOrigin });
+      if (hit) return hit;
+      if (req.mode === 'navigate') return (await c.match('index.html')) || (await c.match('./')) || Response.error();
+      return Response.error();
+    }
   }));
 });
