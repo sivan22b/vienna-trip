@@ -495,7 +495,7 @@ async function searchMtn() {
 
 /* ---------- export / import ---------- */
 async function exportData() {
-  const payload = { app: 'vienna-xmas', exported_at: new Date().toISOString(), trip: state.trip, categories: state.categories, places: state.places, expenses };
+  const payload = { app: 'vienna-xmas', exported_at: new Date().toISOString(), trip: state.trip, categories: state.categories, places: state.places, expenses, payers: meta.payers || null };
   const name = `vienna-places-${todayStr()}.json`;
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const file = new File([blob], name, { type: 'application/json' });
@@ -522,6 +522,7 @@ function readImport(file) {
 function doImport(mode) {
   if (!pendingImport) return;
   let added = 0, updated = 0;
+  if (Array.isArray(pendingImport.payers) && pendingImport.payers.length === 2 && !meta.payers) { meta.payers = pendingImport.payers; lsSet(LS_META, meta); }
   const expMsg = mergeExpenses(pendingImport.expenses || [], mode);
   if (mode === 'replace' && !pendingImport.places.length) { /* קובץ של הוצאות בלבד: לא נוגעים במקומות */ }
   else if (mode === 'replace') {
@@ -584,6 +585,8 @@ const expCat = (k) => EXP_CATS.find((c) => c[0] === k) || EXP_CATS[5];
 let expenses = lsGet(LS_EXP, []);
 let rate = lsGet(LS_RATE, { value: 3.8, date: null, manual: false, fallback: true });
 let expEditing = null, expDate = null, expCatSel = 'food';
+const payers = () => (meta.payers && meta.payers.length === 2 ? meta.payers : ['סיון', 'בן/בת הזוג']);
+let expPayer = lsGet('vienna.payer.v1', 0);
 const saveExp = () => lsSet(LS_EXP, expenses);
 const fmtEur = (v) => `<span dir="ltr" class="num">€${v.toLocaleString('he-IL', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 })}</span>`;
 const fmtIls = (v) => `<span dir="ltr" class="num">₪${Math.round(v).toLocaleString('he-IL')}</span>`;
@@ -633,6 +636,15 @@ function renderExpenses() {
       <div class="exp-cats" role="radiogroup" aria-label="קטגוריה">
         ${EXP_CATS.map(([k, label, color]) => `<button type="button" role="radio" aria-checked="${(ed ? ed.cat : expCatSel) === k}" class="ecat ${(ed ? ed.cat : expCatSel) === k ? 'on' : ''}" data-k="${k}" style="--c:${color}"><i class="sq" style="--c:${color}"></i>${label}</button>`).join('')}
       </div>
+      <div class="exp-payer" role="radiogroup" aria-label="מי שילם">
+        <span class="small">מי שילם?</span>
+        ${payers().map((n, i) => `<button type="button" role="radio" class="pay ${(ed ? ed.payer : expPayer) === i ? 'on' : ''}" aria-checked="${(ed ? ed.payer : expPayer) === i}" data-i="${i}">${esc(n)}</button>`).join('')}
+        <button type="button" class="link" id="expNames">שינוי שמות</button>
+      </div>
+      <div id="expNamesBox" class="exp-ratebox" hidden>
+        <input id="expName0" value="${esc(payers()[0])}" aria-label="שם ראשון"><input id="expName1" value="${esc(payers()[1])}" aria-label="שם שני">
+        <button type="button" class="btn small" id="expNamesSave">שמירה</button>
+      </div>
       <div class="exp-row">
         <label>תאריך<input type="date" id="expDate" value="${ed ? ed.date : expDate}"></label>
         <div class="actions">
@@ -647,6 +659,7 @@ function renderExpenses() {
         <button type="button" class="btn quiet small" id="expRateLive">שער עדכני מהאינטרנט</button>
       </div>
     </form>
+    ${payerSummary()}
     ${byCat.length ? `<section class="exp-cats-sum"><h3>לפי קטגוריה</h3>${byCat.map((c) => `
       <div class="bar"><span class="bar-l"><i class="sq" style="--c:${c.color}"></i>${c.label}</span><span class="bar-v">${fmtEur(c.eur)}</span>
       <span class="bar-t"><i style="width:${(c.eur / max) * 100}%;background:${c.color}"></i></span></div>`).join('')}</section>` : ''}
@@ -654,10 +667,23 @@ function renderExpenses() {
       const list = byDay[d]; const s = list.reduce((a, e) => a + e.eur, 0), si = list.reduce((a, e) => a + ilsOf(e), 0);
       return `<section class="exp-day"><h3><span>${fmtDay(d)}</span><span class="exp-day-sum">${fmtEur(s)} <small>${fmtIls(si)}</small></span></h3>
         <ul>${list.map((e) => `<li><button class="exp-item ${e.id === expEditing ? 'on' : ''}" data-id="${e.id}">
-          <i class="sq" style="--c:${expCat(e.cat)[2]}"></i><span class="exp-desc">${esc(e.desc || expCat(e.cat)[1])}</span>
+          <i class="sq" style="--c:${expCat(e.cat)[2]}"></i><span class="exp-desc">${esc(e.desc || expCat(e.cat)[1])}${e.payer === 0 || e.payer === 1 ? `<small class="exp-who">${esc(payers()[e.payer])}</small>` : ''}</span>
           <span class="exp-eur">${fmtEur(e.eur)}</span><span class="exp-ils">${fmtIls(ilsOf(e))}</span></button></li>`).join('')}</ul></section>`;
     }).join('')}`;
   bindExpenses();
+}
+function payerSummary() {
+  if (!expenses.some((e) => e.payer === 0 || e.payer === 1)) return '';
+  const [a, b] = payers();
+  const sum = (i) => expenses.filter((e) => e.payer === i).reduce((x, e) => [x[0] + e.eur, x[1] + ilsOf(e)], [0, 0]);
+  const A = sum(0), B = sum(1);
+  const diffIls = (A[1] - B[1]) / 2, diffEur = (A[0] - B[0]) / 2;
+  const even = Math.abs(diffIls) < 1;
+  const line = even ? 'שילמתם בערך אותו סכום.' : `כדי להתחלק שווה בשווה, ${esc(diffIls > 0 ? b : a)} צריך/ה להעביר ל${esc(diffIls > 0 ? a : b)} ${fmtIls(Math.abs(diffIls))} (${fmtEur(Math.round(Math.abs(diffEur) * 100) / 100)}).`;
+  return `<section class="exp-who-sum"><h3>מי שילם</h3>
+    <div class="who-row"><span>${esc(a)}</span><b>${fmtEur(A[0])}</b><span class="exp-ils">${fmtIls(A[1])}</span></div>
+    <div class="who-row"><span>${esc(b)}</span><b>${fmtEur(B[0])}</b><span class="exp-ils">${fmtIls(B[1])}</span></div>
+    <p class="small">${line}</p></section>`;
 }
 function bindExpenses() {
   const eurIn = $('#expEur');
@@ -666,13 +692,24 @@ function bindExpenses() {
   $('#expenses').querySelectorAll('.ecat').forEach((b) => (b.onclick = () => {
     expCatSel = b.dataset.k; $('#expenses').querySelectorAll('.ecat').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); });
   }));
+  $('#expenses').querySelectorAll('.pay').forEach((b) => (b.onclick = () => {
+    $('#expenses').querySelectorAll('.pay').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); });
+    if (!expEditing) { expPayer = +b.dataset.i; lsSet('vienna.payer.v1', expPayer); }
+  }));
+  $('#expNames').onclick = () => { $('#expNamesBox').hidden = !$('#expNamesBox').hidden; };
+  $('#expNamesSave').onclick = () => {
+    const n = [$('#expName0').value.trim(), $('#expName1').value.trim()];
+    if (!n[0] || !n[1]) { toast('צריך שני שמות'); return; }
+    meta.payers = n; lsSet(LS_META, meta); renderExpenses(); toast('השמות נשמרו');
+  };
   $('#expDate').onchange = (e) => { if (!expEditing) expDate = e.target.value; };
   $('#expForm').onsubmit = (ev) => {
     ev.preventDefault();
     const eur = parseFloat(eurIn.value.replace(',', '.'));
     if (!(eur > 0)) { eurIn.focus(); toast('צריך להזין סכום ביורו'); return; }
     const cat = $('#expenses').querySelector('.ecat.on')?.dataset.k || 'other';
-    const data = { eur: Math.round(eur * 100) / 100, desc: $('#expDesc').value.trim(), cat, date: $('#expDate').value || todayStr() };
+    const pb = $('#expenses').querySelector('.pay.on');
+    const data = { eur: Math.round(eur * 100) / 100, desc: $('#expDesc').value.trim(), cat, date: $('#expDate').value || todayStr(), payer: pb ? +pb.dataset.i : null };
     if (expEditing) { Object.assign(expenses.find((e) => e.id === expEditing), data); expEditing = null; toast('ההוצאה עודכנה'); }
     else { expenses.push({ id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...data, rate: rate.value }); toast('ההוצאה נוספה'); }
     saveExp(); renderExpenses();
@@ -693,7 +730,7 @@ function bindExpenses() {
   $('#expRateLive').onclick = async () => { rate.manual = false; await refreshRate(true); renderExpenses(); };
 }
 function mergeExpenses(list, mode) {
-  const clean = list.filter((e) => e && e.id && e.eur > 0 && e.date).map((e) => ({ id: String(e.id), eur: +e.eur, desc: String(e.desc || ''), cat: expCat(e.cat)[0], date: String(e.date).slice(0, 10), rate: +e.rate || rate.value }));
+  const clean = list.filter((e) => e && e.id && e.eur > 0 && e.date).map((e) => ({ id: String(e.id), eur: +e.eur, desc: String(e.desc || ''), cat: expCat(e.cat)[0], date: String(e.date).slice(0, 10), rate: +e.rate || rate.value, payer: e.payer === 0 || e.payer === 1 ? e.payer : null }));
   if (mode === 'replace' && clean.length) { expenses = clean; saveExp(); return `הוצאות: ${clean.length}`; }
   let added = 0;
   for (const e of clean) { const ex = expenses.find((x) => x.id === e.id); if (ex) Object.assign(ex, e); else { expenses.push(e); added++; } }
