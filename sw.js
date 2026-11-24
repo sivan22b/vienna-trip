@@ -1,11 +1,11 @@
 // Service worker: האפליקציה עובדת גם בלי אינטרנט
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL = `shell-${VERSION}`;
 const TILES = 'tiles-v1';
 const ASSETS = [
   './', 'index.html', 'style.css', 'app.js', 'data.json', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'vendor/leaflet/images/layers.png', 'vendor/leaflet/images/marker-icon.png',
-  'vendor/leaflet/leaflet.css', 'fonts.css', 'img/ornaments.svg', 'fonts/ibm-plex-sans-hebrew-hebrew-400-normal.woff2', 'fonts/ibm-plex-sans-hebrew-hebrew-500-normal.woff2', 'fonts/ibm-plex-sans-hebrew-hebrew-600-normal.woff2', 'fonts/ibm-plex-sans-hebrew-latin-400-normal.woff2', 'fonts/ibm-plex-sans-hebrew-latin-500-normal.woff2', 'fonts/ibm-plex-sans-hebrew-latin-600-normal.woff2', 'fonts/karantina-hebrew-400-normal.woff2', 'fonts/karantina-hebrew-700-normal.woff2', 'fonts/karantina-latin-400-normal.woff2', 'fonts/karantina-latin-700-normal.woff2',
+  'vendor/leaflet/leaflet.css', 'fonts.css', 'img/edge-left.svg', 'img/edge-right.svg', 'fonts/ibm-plex-sans-hebrew-hebrew-400-normal.woff2', 'fonts/ibm-plex-sans-hebrew-hebrew-500-normal.woff2', 'fonts/ibm-plex-sans-hebrew-hebrew-600-normal.woff2', 'fonts/ibm-plex-sans-hebrew-latin-400-normal.woff2', 'fonts/ibm-plex-sans-hebrew-latin-500-normal.woff2', 'fonts/ibm-plex-sans-hebrew-latin-600-normal.woff2', 'fonts/karantina-hebrew-400-normal.woff2', 'fonts/karantina-hebrew-700-normal.woff2', 'fonts/karantina-latin-400-normal.woff2', 'fonts/karantina-latin-700-normal.woff2',
   'vendor/leaflet/leaflet.js',
 ];
 const MAX_TILES = 600;
