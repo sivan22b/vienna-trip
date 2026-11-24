@@ -17,9 +17,11 @@ const CAT_DEFAULT = {
 const CAT_SHORT = { christmas: 'חג המולד', misc: 'שונות' };
 const CAT_ICON = { shops: '🛍️', restaurants: '🍽️', cafes: '☕', museums: '🏛️', bars: '🍷', christmas: '🎄', misc: '✨' };
 const CAT_COLOR = {
-  shops: '#7b4fa0', restaurants: '#c0392b', cafes: '#8a5a2b', museums: '#2f5f8f',
-  bars: '#b8327a', christmas: '#1f7a45', misc: '#c98a1a'
+  shops: '#6a3d6e', restaurants: '#b03a3f', cafes: '#7a5232', museums: '#2f4e6e',
+  bars: '#8a2d5a', christmas: '#2f7a4a', misc: '#b07d1e'
 };
+const deg = (v) => `<span dir="ltr" class="num">${Math.round(v)}°</span>`;
+const sq = (c, hollow) => `<i class="sq${hollow ? ' hollow' : ''}" style="--c:${CAT_COLOR[c]}" aria-hidden="true"></i>`;
 
 let state = {
   trip: { weather_start: '2026-12-20', start: '2026-12-21', end: '2026-12-30', away: ['2026-12-24', '2026-12-25', '2026-12-26'] },
@@ -83,7 +85,7 @@ async function syncSeed() {
   const ids = new Set(state.places.map((p) => p.id));
   fresh.forEach((p) => { if (ids.has(p.id)) p.id = nextId(); state.places.push(p); ids.add(p.id); });
   savePlaces(); markersDirty = true; buildTabs(); refreshView();
-  toast(`נוספו ${fresh.length} מקומות חדשים לרשימה 🎁`);
+  toast(`נוספו ${fresh.length} מקומות חדשים לרשימה`);
 }
 function nextId() { return state.places.reduce((m, p) => Math.max(m, Number(p.id) || 0), 0) + 1; }
 
@@ -111,9 +113,9 @@ function countdown() {
   const t = todayStr(), { start, end } = state.trip;
   let s;
   const total = dayDiff(start, end) + 1;
-  if (t < start) { const n = dayDiff(t, start); s = n === 1 ? 'ממריאים מחר! ✈️' : `עוד ${n} ימים לטיסה · 21-30.12`; }
-  else if (t <= end) s = `יום ${dayDiff(start, t) + 1} מתוך ${total} · תהנו! 🎅`;
-  else s = 'הטיול הסתיים. היה כיף? ❄️';
+  if (t < start) { const n = dayDiff(t, start); s = n === 1 ? 'טסים מחר' : `עוד ${n} ימים לטיסה, 21 עד 30 בדצמבר`; }
+  else if (t <= end) s = `יום ${dayDiff(start, t) + 1} מתוך ${total} בווינה`;
+  else s = 'הטיול הסתיים';
   $('#countdown').textContent = s;
 }
 
@@ -129,8 +131,9 @@ function tabsDef() {
 }
 function buildTabs() {
   $('#tabs').innerHTML = tabsDef().map((t) => {
-    const n = CAT_ORDER.includes(t.id) ? state.places.filter((p) => p.category === t.id).length : t.id === 'all' ? state.places.length : t.id === 'fav' ? state.places.filter((p) => p.favorite).length : '';
-    return `<button class="tab" role="tab" data-tab="${t.id}">${t.icon} ${esc(t.label)}${n !== '' ? `<span class="n">${n}</span>` : ''}</button>`;
+    const n = CAT_ORDER.includes(t.id) ? state.places.filter((p) => p.category === t.id).length : t.id === 'fav' ? state.places.filter((p) => p.favorite).length : '';
+    const mark = CAT_ORDER.includes(t.id) ? sq(t.id) : t.id === 'fav' ? '<i class="heart" aria-hidden="true">♥</i>' : '';
+    return `<button class="tab tab-${t.id}" role="tab" data-tab="${t.id}">${mark}<span>${esc(t.label)}</span>${n !== '' ? `<sup>${n}</sup>` : ''}</button>`;
   }).join('');
   $('#tabs').querySelectorAll('.tab').forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
   markTab();
@@ -170,40 +173,39 @@ function filtered() {
 function renderList() {
   const list = filtered();
   const visited = list.filter((p) => p.visited).length;
-  $('#count').textContent = `${list.length} מקומות${visited ? ` · ${visited} ביקרנו` : ''}`;
-  if (!list.length) { $('#cards').innerHTML = `<li class="empty">אין כאן מקומות כרגע 🎁<br>אפשר להוסיף עם כפתור הפלוס</li>`; return; }
+  $('#count').textContent = `${list.length} מקומות${visited ? `, ביקרנו ב-${visited}` : ''}`;
+  if (!list.length) { $('#cards').innerHTML = `<li class="empty">${ui.tab === 'fav' ? 'עוד לא סימנתם מועדפים. לחיצה על הלב ליד מקום מוסיפה אותו לכאן.' : 'אין מקומות שמתאימים לסינון. אפשר להוסיף מקום בכפתור הפלוס.'}</li>`; return; }
   $('#cards').innerHTML = list.map(cardHtml).join('');
 }
 function cardHtml(p) {
-  const catLabel = state.categories[p.category] || CAT_DEFAULT[p.category];
-  return `<li class="card ${p.suggested ? 'suggested' : ''} ${p.favorite ? 'favorite' : ''} ${p.visited ? 'visited' : ''}" style="--cat:${CAT_COLOR[p.category]}" data-id="${p.id}">
-    <div class="card-head">
-      <div>
-        <h3>${esc(p.name)}</h3>
-        <div class="badges">
-          ${ui.tab === 'all' || ui.tab === 'fav' ? `<span class="badge">${CAT_ICON[p.category]} ${esc(catLabel)}</span>` : ''}
-          ${p.suggested ? '<span class="badge sug">✨ הצעה</span>' : ''}
-          ${!hasGeo(p) ? '<span class="badge nogeo">אין מיקום במפה</span>' : ''}
-        </div>
-      </div>
-      <div class="head-btns"><button class="fav ${p.favorite ? 'on' : ''}" data-act="fav" aria-label="${p.favorite ? 'הסרה ממועדפים' : 'הוספה למועדפים'}">${p.favorite ? '❤️' : '🤍'}</button><button class="edit" data-act="edit" aria-label="עריכה">✏️</button></div>
+  const catLabel = CAT_SHORT[p.category] || state.categories[p.category] || CAT_DEFAULT[p.category];
+  const showCat = ui.tab === 'all' || ui.tab === 'fav';
+  return `<li class="place ${p.suggested ? 'suggested' : ''} ${p.visited ? 'visited' : ''}" data-id="${p.id}">
+    <div class="place-head">
+      ${sq(p.category, p.suggested)}
+      <h3>${esc(p.name)}</h3>
+      <button class="fav ${p.favorite ? 'on' : ''}" data-act="fav" aria-pressed="${p.favorite}" aria-label="${p.favorite ? 'הסרה ממועדפים' : 'הוספה למועדפים'}">♥</button>
+      <button class="edit" data-act="edit" aria-label="עריכה"><svg viewBox="0 0 20 20" width="18" height="18"><path d="M3 14.5V17h2.5L15 7.5 12.5 5 3 14.5zM14 3.5l2.5 2.5 1-1a1 1 0 000-1.4l-1.1-1.1a1 1 0 00-1.4 0l-1 1z" fill="currentColor"/></svg></button>
     </div>
-    ${p.address ? `<p class="meta">📍 ${esc(p.address)}</p>` : ''}
-    ${p.hours ? `<p class="meta">🕒 ${esc(p.hours)}</p>` : ''}
-    ${p.christmas_note ? `<p class="xmas">🎄 ${esc(p.christmas_note)}</p>` : ''}
+    ${showCat || p.suggested || !hasGeo(p) ? `<p class="kind">${[showCat ? esc(catLabel) : '', p.suggested ? 'הצעה שלנו, לא מהרשימה שלכם' : '', !hasGeo(p) ? 'עוד אין מיקום במפה' : ''].filter(Boolean).join('. ')}</p>` : ''}
+    <dl class="facts">
+      ${p.address ? `<div><dt>כתובת</dt><dd dir="auto">${esc(p.address)}</dd></div>` : ''}
+      ${p.hours ? `<div><dt>שעות</dt><dd dir="auto">${esc(p.hours)}</dd></div>` : ''}
+    </dl>
+    ${p.christmas_note ? `<p class="xmas"><b>בחג:</b> ${esc(p.christmas_note)}</p>` : ''}
     ${p.note ? `<p class="note">${esc(p.note)}</p>` : ''}
-    <div class="card-actions">
-      <button class="visit ${p.visited ? 'on' : ''}" data-act="visit">${p.visited ? '✓ ביקרנו' : 'ביקרנו?'}</button>
-      <a class="btn small" href="${esc(mapsUrl(p))}" target="_blank" rel="noopener">ניווט ב-Google Maps</a>
-      ${hasGeo(p) ? '<button class="btn ghost small" data-act="onmap">במפה</button>' : ''}
+    <div class="place-actions">
+      <a class="btn" href="${esc(mapsUrl(p))}" target="_blank" rel="noopener">ניווט</a>
+      ${hasGeo(p) ? '<button class="btn quiet" data-act="onmap">הצגה במפה</button>' : ''}
+      <button class="visit ${p.visited ? 'on' : ''}" data-act="visit" aria-pressed="${p.visited}"><i></i>ביקרנו</button>
     </div>
   </li>`;
 }
 function onCardClick(e) {
   const btn = e.target.closest('[data-act]'); if (!btn) return;
-  const id = btn.closest('.card').dataset.id;
+  const id = btn.closest('.place').dataset.id;
   const p = state.places.find((x) => String(x.id) === id); if (!p) return;
-  if (btn.dataset.act === 'fav') { p.favorite = !p.favorite; savePlaces(); buildTabs(); renderList(); markersDirty = true; toast(p.favorite ? 'נוסף למועדפים ❤️' : 'הוסר מהמועדפים'); }
+  if (btn.dataset.act === 'fav') { p.favorite = !p.favorite; savePlaces(); buildTabs(); renderList(); markersDirty = true; toast(p.favorite ? 'נוסף למועדפים' : 'הוסר מהמועדפים'); }
   if (btn.dataset.act === 'visit') { p.visited = !p.visited; savePlaces(); renderList(); markersDirty = true; }
   if (btn.dataset.act === 'edit') openEdit(p);
   if (btn.dataset.act === 'onmap') { focusOnMap = p.id; showTab('map'); }
@@ -216,7 +218,7 @@ function setOrigin(v, render = true) {
 
 /* ---------- edit ---------- */
 function buildCatSelect() {
-  $('#selCat').innerHTML = CAT_ORDER.map((c) => `<option value="${c}">${CAT_ICON[c]} ${esc(state.categories[c] || CAT_DEFAULT[c])}</option>`).join('');
+  $('#selCat').innerHTML = CAT_ORDER.map((c) => `<option value="${c}">${esc(state.categories[c] || CAT_DEFAULT[c])}</option>`).join('');
 }
 function openEdit(p) {
   const f = $('#formEdit'); f.reset(); $('#geoMsg').textContent = '';
@@ -241,10 +243,10 @@ function saveEdit(e) {
   if (editingId !== null) {
     const p = state.places.find((x) => x.id === editingId);
     Object.assign(p, { ...data, id: p.id, source: p.source });
-    toast('נשמר ✓');
+    toast('השינויים נשמרו');
   } else {
     state.places.push({ ...data, id: nextId(), source: 'app' });
-    toast('נוסף לרשימה 🎁');
+    toast('המקום נוסף');
   }
   savePlaces(); markersDirty = true; $('#dlgEdit').close(); buildTabs(); refreshView();
 }
@@ -303,16 +305,16 @@ function drawMarkers() {
   markerLayer.clearLayers(); markersDirty = false;
   const withGeo = state.places.filter(hasGeo);
   withGeo.filter((p) => !mapHidden.has(p.category)).forEach((p) => {
-    const icon = L.divIcon({ className: '', html: `<div class="pin ${p.suggested ? 'sug' : ''} ${p.visited ? 'vis' : ''}" style="background:${CAT_COLOR[p.category]}"></div>`, iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -22] });
+    const icon = L.divIcon({ className: '', html: `<div class="pin ${p.suggested ? 'sug' : ''} ${p.visited ? 'vis' : ''} ${p.favorite ? 'fav' : ''}" style="--c:${CAT_COLOR[p.category]}"></div>`, iconSize: [20, 20], iconAnchor: [10, 10], popupAnchor: [0, -12] });
     L.marker([p.lat, p.lng], { icon, pid: p.id }).addTo(markerLayer).bindPopup(
-      `<b>${CAT_ICON[p.category]} ${esc(p.name)}</b>${p.favorite ? ' ❤️' : ''}${p.suggested ? ' ✨' : ''}${p.visited ? ' ✓' : ''}<br>${esc(p.address)}${p.hours ? `<br>🕒 ${esc(p.hours)}` : ''}${p.christmas_note ? `<br>🎄 ${esc(p.christmas_note)}` : ''}<br><a href="${esc(mapsUrl(p))}" target="_blank" rel="noopener">ניווט ←</a>`
+      `<b>${esc(p.name)}</b>${p.favorite ? ' <span class="pop-fav">♥</span>' : ''}<br>${esc(p.address)}${p.hours ? `<br>${esc(p.hours)}` : ''}${p.christmas_note ? `<br><span class="pop-x">בחג: ${esc(p.christmas_note)}</span>` : ''}${p.suggested ? '<br><i>הצעה</i>' : ''}${p.visited ? '<br><i>ביקרנו</i>' : ''}<br><a href="${esc(mapsUrl(p))}" target="_blank" rel="noopener">ניווט</a>`
     );
   });
   const missing = state.places.length - withGeo.length;
-  $('#mapNote').textContent = `${withGeo.length} מקומות במפה. ${missing ? `ל-${missing} מקומות אין עדיין קואורדינטות (אפשר להוסיף בעריכה). ` : ''}סיכה מקווקוות = הצעה, חיוורת = ביקרנו. לחיצה על המקרא מסתירה קטגוריה.`;
+  $('#mapNote').textContent = `${withGeo.length} מקומות במפה. ${missing ? `ל-${missing} מקומות אין עדיין קואורדינטות (אפשר להוסיף בעריכה). ` : ''}ריבוע חלול הוא הצעה, ריבוע חיוור הוא מקום שביקרנו בו. לחיצה על קטגוריה במקרא מסתירה אותה.`;
 }
 function renderLegend() {
-  $('#legend').innerHTML = CAT_ORDER.map((c) => `<span data-c="${c}" style="cursor:pointer;${mapHidden.has(c) ? 'opacity:.35' : ''}"><i class="dot" style="background:${CAT_COLOR[c]}"></i>${esc(CAT_SHORT[c] || state.categories[c])}</span>`).join('');
+  $('#legend').innerHTML = CAT_ORDER.map((c) => `<span data-c="${c}" style="cursor:pointer;${mapHidden.has(c) ? 'opacity:.35' : ''}">${sq(c)}${esc(CAT_SHORT[c] || state.categories[c])}</span>`).join('');
   $('#legend').querySelectorAll('span').forEach((s) => (s.onclick = () => {
     const c = s.dataset.c; mapHidden.has(c) ? mapHidden.delete(c) : mapHidden.add(c); renderLegend(); drawMarkers();
   }));
@@ -386,46 +388,69 @@ function advice(w) {
   else if (wind >= 15) extra.push('קצת רוח: צעיף צמוד לצוואר');
   if (snow) extra.push('שלג: נעליים אטומות למים עם סוליה שלא מחליקה');
   if (rain >= 1 || (pop ?? 0) >= 50) extra.push(`סיכוי לגשם${pop != null ? ` ${pop}%` : ''}: מעיל עמיד למים או מטרייה מתקפלת, ונעליים שלא נרטבות`);
-  if (night <= day - 4) extra.push(`בערב (שווקי חג המולד) מרגיש כמו ${Math.round(night)}°: להוסיף שכבה או מחממי ידיים`);
+  if (night <= day - 4) extra.push(`בערב, בשווקים, מרגיש כמו ${deg(night)}. כדאי להוסיף שכבה או מחממי ידיים`);
   return { level, items, extra };
 }
 function fmtDay(s) {
   const d = new Date(s + 'T12:00:00Z');
   return new Intl.DateTimeFormat('he-IL', { weekday: 'long', day: 'numeric', month: 'numeric', timeZone: 'UTC' }).format(d);
 }
+let wxSel = null;
 function renderWeather(data, fetchedAt, stale) {
   const days = tripDays(), today = todayStr();
+  if (!wxSel || !days.includes(wxSel)) wxSel = days.includes(today) ? today : days[0];
   const anyLastYear = days.some((d) => data[d]?.kind === 'lastyear');
   const firstForecast = addDays(wxStart(), -15);
-  let html = `<div class="wx-head"><h2>❄️ מזג האוויר בטיול</h2><p>${Number(wxStart().slice(8))}-${Number(state.trip.end.slice(8))} בדצמבר · ${meta.mountain ? `24-26.12 ב${esc(meta.mountain.name)}` : 'הכל לפי וינה (אפשר לשנות להרים בהגדרות ⚙️)'}</p>
-    ${anyLastYear ? `<p style="margin-top:6px">⏳ תחזית אמיתית זמינה עד 16 יום קדימה (מ-${fmtDay(firstForecast)} לערך). עד אז מוצג מה היה באותם תאריכים בשנה שעברה, כהערכה.</p>` : ''}
-    ${stale ? `<p style="margin-top:6px">📴 אין חיבור. מוצגת התחזית האחרונה ששמרתי.</p>` : ''}</div>`;
+  const wd = (d) => new Intl.DateTimeFormat('he-IL', { weekday: 'short', timeZone: 'UTC' }).format(new Date(d + 'T12:00:00Z'));
+  let html = `<header class="wx-intro">
+      <h2>לוח הימים</h2>
+      <p>${Number(wxStart().slice(8))} עד ${Number(state.trip.end.slice(8))} בדצמבר. ${meta.mountain ? `ב-24 עד 26 לפי ${esc(meta.mountain.name)}, שאר הימים לפי וינה.` : 'כל הימים לפי וינה. את הימים בהרים מגדירים בהגדרות.'}</p>
+      ${anyLastYear ? `<p class="wx-warn">תחזית אמיתית מתפרסמת 16 יום מראש, בערך מ${fmtDay(firstForecast)}. עד אז מוצג מזג האוויר שהיה באותם תאריכים בשנה שעברה, כהערכה.</p>` : ''}
+      ${stale ? `<p class="wx-warn">אין חיבור לרשת. מוצגת התחזית האחרונה שנשמרה.</p>` : ''}
+    </header>
+    <div class="advent" role="tablist">`;
   for (const d of days) {
-    const w = data[d];
-    if (!w) { html += `<div class="wx-day"><div class="wx-date">${fmtDay(d)}</div><p class="small">אין נתונים</p></div>`; continue; }
-    const [ico, desc] = WMO[w.weather_code] || ['🌡️', ''];
-    const a = advice(w);
-    html += `<div class="wx-day ${d === today ? 'today' : ''}">
-      <div class="wx-top"><div><div class="wx-date">${fmtDay(d)}${d === today ? ' · היום' : ''}</div>
-        <div class="wx-loc">📍 ${esc(w.loc)} · ${desc}${w.kind === 'lastyear' ? ' · <b>שנה שעברה</b>' : ''}</div></div><div class="wx-ico">${ico}</div></div>
-      <div class="wx-temps"><span><b>${Math.round(w.temperature_2m_max)}°</b> / ${Math.round(w.temperature_2m_min)}°</span>
-        <span class="wx-feels">מרגיש כמו ${Math.round(w.apparent_temperature_max)}° / ${Math.round(w.apparent_temperature_min)}°</span>
-        <span>💨 ${Math.round(w.wind_speed_10m_max)} קמ״ש</span>
-        ${w.precipitation_probability_max != null ? `<span>☔ ${w.precipitation_probability_max}%</span>` : (w.precipitation_sum > 0.2 ? `<span>☔ ${w.precipitation_sum.toFixed(1)} מ״מ</span>` : '')}
-        ${w.snowfall_sum > 0.2 ? `<span>❄️ ${w.snowfall_sum.toFixed(1)} ס״מ</span>` : ''}</div>
-      <div class="wx-advice"><span class="wx-level">🧣 ${a.level}:</span> מה ללבוש
-        <ul>${a.items.map((i) => `<li>${i}</li>`).join('')}${a.extra.map((i) => `<li><b>${i}</b></li>`).join('')}</ul></div>
-    </div>`;
+    const w = data[d]; const [ico] = w ? (WMO[w.weather_code] || ['·']) : ['·'];
+    const away = state.trip.away.includes(d);
+    html += `<button class="door ${d === wxSel ? 'open' : ''} ${d === today ? 'today' : ''} ${away ? 'away' : ''} ${w?.kind === 'lastyear' ? 'est' : ''}" data-d="${d}" role="tab" aria-selected="${d === wxSel}">
+      <span class="door-n">${Number(d.slice(8))}</span><span class="door-wd">${wd(d)}</span>
+      <span class="door-ico">${ico}</span>
+      <span class="door-t">${w ? deg(w.apparent_temperature_max) : ''}</span>
+    </button>`;
   }
-  html += `<p class="wx-src">נתונים: Open-Meteo${fetchedAt ? ` · עודכן ${new Date(fetchedAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}` : ''}</p>`;
+  html += `</div>`;
+  const w = data[wxSel];
+  if (!w) html += `<section class="wx-detail"><p>אין נתונים ליום הזה.</p></section>`;
+  else {
+    const [, desc] = WMO[w.weather_code] || ['', ''];
+    const a = advice(w);
+    const rain = w.precipitation_probability_max != null ? `${w.precipitation_probability_max}%` : (w.precipitation_sum > 0.2 ? `${w.precipitation_sum.toFixed(1)} מ״מ` : 'אין');
+    html += `<section class="wx-detail">
+      <h3>${fmtDay(wxSel)}${wxSel === today ? ', היום' : ''}</h3>
+      <p class="wx-sub">${esc(w.loc)}, ${desc}${w.kind === 'lastyear' ? '. נתוני שנה שעברה' : ''}</p>
+      <dl class="wx-grid">
+        <div class="feels"><dt>מרגיש כמו</dt><dd>${deg(w.apparent_temperature_max)} <small>ביום</small><br>${deg(w.apparent_temperature_min)} <small>בערב</small></dd></div>
+        <div><dt>במדחום</dt><dd>${deg(w.temperature_2m_max)} עד ${deg(w.temperature_2m_min)}</dd></div>
+        <div><dt>רוח</dt><dd>${Math.round(w.wind_speed_10m_max)} קמ״ש</dd></div>
+        <div><dt>משקעים</dt><dd>${rain}${w.snowfall_sum > 0.2 ? `, שלג ${w.snowfall_sum.toFixed(1)} ס״מ` : ''}</dd></div>
+      </dl>
+      <div class="wear">
+        <h4>מה ללבוש: ${a.level}</h4>
+        <ul>${a.items.map((i) => `<li>${i}</li>`).join('')}</ul>
+        ${a.extra.length ? `<ul class="wear-extra">${a.extra.map((i) => `<li>${i}</li>`).join('')}</ul>` : ''}
+      </div>
+    </section>`;
+  }
+  html += `<p class="wx-src">נתונים מ-Open-Meteo${fetchedAt ? `, עודכן ${new Date(fetchedAt).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}` : ''}</p>`;
   $('#weather').innerHTML = html;
+  $('#weather').querySelectorAll('.door').forEach((b) => (b.onclick = () => { wxSel = b.dataset.d; renderWeather(data, fetchedAt, stale); }));
 }
 async function showWeather(force = false) {
   const key = JSON.stringify([state.trip, meta.mountain]);
   const cache = lsGet(LS_WX, null);
   const fresh = cache && cache.key === key && Date.now() - cache.at < 3 * 3600 * 1000;
   if (cache && cache.key === key) renderWeather(cache.data, cache.at, false);
-  else $('#weather').innerHTML = '<p class="empty">טוען תחזית... ❄️</p>';
+  else $('#weather').innerHTML = '<p class="empty">טוען תחזית</p>';
   if (fresh && !force) return;
   try {
     const data = await loadWeather();
@@ -446,7 +471,7 @@ async function searchMtn() {
     const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=6&language=de&format=json`);
     const j = await r.json();
     const res = (j.results || []);
-    $('#mtnResults').innerHTML = res.length ? res.map((x, i) => `<li><button data-i="${i}">${esc(x.name)} · ${esc([x.admin1, x.country].filter(Boolean).join(', '))}${x.elevation ? ` · ${Math.round(x.elevation)} מ׳` : ''}</button></li>`).join('') : '<li class="small">לא נמצא</li>';
+    $('#mtnResults').innerHTML = res.length ? res.map((x, i) => `<li><button data-i="${i}">${esc([x.name, x.admin1, x.country].filter(Boolean).join(', '))}${x.elevation ? `, ${Math.round(x.elevation)} מ׳` : ''}</button></li>`).join('') : '<li class="small">לא נמצא</li>';
     $('#mtnResults').querySelectorAll('button').forEach((b) => (b.onclick = () => {
       const x = res[b.dataset.i]; meta.mountain = { name: x.name, lat: x.latitude, lng: x.longitude }; lsSet(LS_META, meta);
       $('#mtnResults').innerHTML = ''; renderMtn(); toast(`מזג האוויר ל-24-26.12 לפי ${x.name}`);

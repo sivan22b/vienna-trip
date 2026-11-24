@@ -12,21 +12,17 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="וינה">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
   <div class="title">
-    <span class="tree" aria-hidden="true">🎄</span>
-    <div>
-      <h1>וינה בחג המולד</h1>
-      <p id="countdown" class="sub"></p>
-    </div>
+    <h1>וינה<span>בחג המולד</span></h1>
+    <p id="countdown" class="sub"></p>
   </div>
-  <button id="btnSettings" class="icon-btn" aria-label="הגדרות, ייצוא וייבוא">⚙️</button>
+  <button id="btnSettings" class="icon-btn" aria-label="הגדרות, ייצוא וייבוא"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/><rect x="6" y="4.5" width="4" height="5" fill="currentColor"/><rect x="14" y="9.5" width="4" height="5" fill="currentColor"/><rect x="8" y="14.5" width="4" height="5" fill="currentColor"/></svg></button>
 </header>
 
 <nav class="tabs" id="tabs" role="tablist"></nav>
@@ -38,7 +34,7 @@
       <div class="seg" id="originSeg">
         <button data-v="all" class="on">הכל</button>
         <button data-v="mine">שלי</button>
-        <button data-v="suggested">מומלצים ✨</button>
+        <button data-v="suggested">הצעות</button>
       </div>
       <label class="chk"><input type="checkbox" id="hideVisited"> הסתר מקומות שביקרנו</label>
     </div>
@@ -57,7 +53,7 @@
   </section>
 </main>
 
-<button id="btnAdd" class="fab" aria-label="הוספת מקום">＋</button>
+<button id="btnAdd" class="fab" aria-label="הוספת מקום"><span>+</span></button>
 
 <dialog id="dlgEdit">
   <form id="formEdit" method="dialog">
@@ -69,18 +65,18 @@
       <label>קו רוחב (lat)<input name="lat" inputmode="decimal"></label>
       <label>קו אורך (lng)<input name="lng" inputmode="decimal"></label>
     </div>
-    <button type="button" id="btnGeo" class="btn ghost small">📍 מצא קואורדינטות לפי הכתובת</button>
+    <button type="button" id="btnGeo" class="btn quiet small">מציאת קואורדינטות לפי הכתובת</button>
     <span id="geoMsg" class="small"></span>
     <label>שעות פתיחה<input name="hours"></label>
     <label>הערה לחג<input name="christmas_note" placeholder="למשל: סגור ב-24-26.12"></label>
     <label>הערות<textarea name="note" rows="3"></textarea></label>
     <label>קישור ל-Google Maps<input name="gmaps_url" type="url" placeholder="אפשר להשאיר ריק"></label>
     <label class="chk"><input type="checkbox" name="suggested"> הצעה (לא מהרשימה שלי)</label>
-    <label class="chk"><input type="checkbox" name="favorite"> ❤️ מועדף</label>
+    <label class="chk"><input type="checkbox" name="favorite"> מועדף</label>
     <label class="chk"><input type="checkbox" name="visited"> ביקרנו</label>
     <div class="actions">
       <button type="submit" class="btn" value="save">שמירה</button>
-      <button type="button" class="btn ghost" id="btnCancel">ביטול</button>
+      <button type="button" class="btn quiet" id="btnCancel">ביטול</button>
       <button type="button" class="btn danger" id="btnDelete">מחיקה</button>
     </div>
   </form>
@@ -92,14 +88,14 @@
     <h3>שיתוף בין הטלפונים</h3>
     <p class="small">מייצאים קובץ בטלפון אחד, שולחים אותו בוואטסאפ, ומייבאים בטלפון השני.</p>
     <div class="actions">
-      <button class="btn" id="btnExport">⬇️ ייצוא קובץ</button>
-      <button class="btn ghost" id="btnImport">⬆️ ייבוא קובץ</button>
+      <button class="btn" id="btnExport">ייצוא קובץ</button>
+      <button class="btn quiet" id="btnImport">ייבוא קובץ</button>
       <input type="file" id="fileImport" accept=".json,application/json" hidden>
     </div>
     <div id="importChoice" class="choice" hidden>
       <p>איך לייבא?</p>
       <button class="btn small" id="btnMerge">מיזוג (מוסיף ומעדכן, שומר "ביקרנו" משני הצדדים)</button>
-      <button class="btn ghost small" id="btnReplace">החלפה מלאה</button>
+      <button class="btn quiet small" id="btnReplace">החלפה מלאה</button>
     </div>
     <p id="importMsg" class="small"></p>
 
@@ -115,7 +111,7 @@
     <h3>איפוס</h3>
     <button class="btn danger small" id="btnReset">חזרה לרשימה המקורית (מוחק שינויים)</button>
 
-    <div class="actions"><button class="btn ghost" id="btnCloseSettings">סגירה</button></div>
+    <div class="actions"><button class="btn quiet" id="btnCloseSettings">סגירה</button></div>
   </div>
 </dialog>
 
