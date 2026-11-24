@@ -229,3 +229,7 @@ html,body{overflow-x:hidden}
 @media (max-width: 720px){
   body{background-position:left 0 top 0, right 0 top 0; background-size:16px 366px, 16px 366px}
 }
+
+/* הצעות (לא מהרשימה שלכם) מודגשות */
+.place.suggested .kind,.place.suggested .facts dd,.place.suggested .note,.place.suggested .xmas{font-weight:600}
+.place.suggested .kind{color:var(--fir)}

@@ -77,6 +77,11 @@ function maxId(list) { return list.reduce((m, p) => Math.max(m, Number(p.id) || 
 async function syncSeed() {
   let seed; try { seed = await loadSeed(); } catch { return; }
   if (seed.trip) state.trip = { ...state.trip, ...seed.trip };
+  const removed = new Set(seed.removed_ids || []);
+  const before = state.places.length;
+  state.places = state.places.filter((p) => !(removed.has(p.id) && p.source !== 'app'));
+  const dropped = before - state.places.length;
+  if (dropped) { savePlaces(); markersDirty = true; buildTabs(); refreshView(); }
   const seen = meta.seedMax ?? 122;
   const names = new Set(state.places.map((p) => p.name.trim().toLowerCase()));
   const fresh = (seed.places || []).filter((p) => Number(p.id) > seen && !names.has(String(p.name).trim().toLowerCase())).map(normalize);

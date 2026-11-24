@@ -861,21 +861,6 @@
       "suggested": false
     },
     {
-      "id": 57,
-      "name": "קניון SCS",
-      "category": "shops",
-      "address": "Vösendorf (מחוץ לעיר)",
-      "lat": null,
-      "lng": null,
-      "hours": "ב'-ש'",
-      "christmas_note": "",
-      "note": "מרוחק מהעיר, יש פריימרק. לדעתה לא שווה",
-      "source": "facebook_post",
-      "gmaps_url": "https://www.google.com/maps/search/?api=1&query=%D7%A7%D7%A0%D7%99%D7%95%D7%9F%20SCS%20Wien",
-      "visited": false,
-      "suggested": false
-    },
-    {
       "id": 58,
       "name": "שוק חג המולד בכיכר העירייה (Rathausplatz)",
       "category": "christmas",
@@ -1895,5 +1880,8 @@
       "visited": false,
       "suggested": true
     }
+  ],
+  "removed_ids": [
+    57
   ]
 }
